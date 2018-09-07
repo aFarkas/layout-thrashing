@@ -1,0 +1,1022 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<title>Avoid Layout Thrashing - The easy way</title>
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/boffinhouse.css">
+
+		<!-- Theme used for syntax highlighting of code -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+	</head>
+	<body>
+		<div class="reveal">
+			<div class="slides">
+				<section>
+					<h1 class="intro">
+						Avoid Layout Thrashing &mdash; <br> the easy way
+					</h1>
+					<p>
+						<small>Alexander Farkas - boffinHouse</small>
+					</p>
+					<ul class="branding">
+						<li class="branding-item is-unic">
+							<img
+									class="custom-img"
+									src="img/unic.svg"
+									alt=""
+							>
+						</li>
+						<li class="branding-item is-boffinhouse">
+							<img
+									class="custom-img"
+									src="img/boffinhouse.svg"
+									alt=""
+							>
+						</li>
+					</ul>
+				</section>
+
+
+				<section>
+					<h1>What is Layout Thrashing?</h1>
+						<p>
+							Layout Thrashing means: Forcing the browser to calculate a layout that is never rendered to the screen.
+						</p>
+				</section>
+
+				<section
+						data-background="./material/sbb-layout-thrashing.png"
+						data-background-color="#fff"
+						data-background-size="contain"
+				>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# When does it happen?
+						Layout Thrashing happens, when you request layout information of an element or the document, while layout is in an invalidated state.
+					</textarea>
+				</section>
+
+				<section data-markdown>
+
+					<textarea data-template>
+						# What invalidates your Style/Layout?
+
+						```js
+						//any DOM or CSSOM change:
+
+						// DOM change
+						document.body.classList.add('foo');
+						document.body.style.marginBottom = '10px';
+						//CSSOM change
+						document.styleSheets[0].insertRule('body {margin: 10px;}', 0);
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						var slider = document.querySelector('.slider');
+
+						slider.style.transform = 'translateX(0px)';
+						/* ... */
+						slider.style.transform = 'translateX(20px)';
+						slider.style.transform = 'translateX(21px)';
+						slider.style.transform = 'translateX(22px)';
+
+
+						//vs.
+						var slider = document.querySelector('.slider');
+
+						slider.style.transform = 'translateX(22px)';
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						var slider = document.querySelector('.slider');
+
+						console.time('change multi style');
+						slider.style.transform = 'translateX(0px)';
+						/* ... */
+						slider.style.transform = 'translateX(20px)';
+						slider.style.transform = 'translateX(21px)';
+						slider.style.transform = 'translateX(22px)';
+
+						slider.offsetHeight;
+						console.timeEnd('change multi style');
+
+
+						//vs.
+						var slider = document.querySelector('.slider');
+
+						console.time('change once');
+						slider.style.transform = 'translateX(22px)';
+
+						slider.offsetHeight;
+						console.timeEnd('change once');
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						// any DOM or CSSOM change invalidates layout
+						document.body.classList.add('foo');
+
+						// reads layout == forces layout calculation on invalid layout
+						const box = element.getBoundingClientRect();
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						// any DOM or CSSOM change flags the layout as invalid
+						document.body.classList.add('foo');
+
+						// reads layout == forces layout calculation
+						const box = element.getBoundingClientRect();
+
+						// write/mutate
+						document.body.appendChild(someBox);
+
+						//read/measure
+						const color = getComputedStyle(someOtherBox).color;
+						```
+					</textarea>
+				</section>
+
+				<section>
+					<img src="./material/dont-touch-me.png" />
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						// reads layout
+						const box = element.getBoundingClientRect();
+						const color = getComputedStyle(someOtherBox).color;
+
+						// write
+						document.body.classList.add('foo');
+						document.body.appendChild(someBox);
+						```
+					</textarea>
+				</section>
+
+				<section
+						data-background-video="./material/layout-thrashing-debug.mp4"
+						data-background-video-loop="true"
+						data-background-video-muted="true"
+						data-background-size="contain"
+				>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Basic Example
+						```js
+						function resizeAllParagraphsToMatchBoxWidth(paragraphs, box) {
+							// Puts the browser into a read-write-read-write cycle.
+							for (let i = 0; i < paragraphs.length; i++) {
+								paragraphs[i].style.width = box.offsetWidth + 'px';
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Separate your Reads from your Writes and the problem is solved
+						```js
+						function resizeAllParagraphsToMatchBoxWidth(paragraphs, box) {
+							const width = box.offsetWidth;
+
+							for (let i = 0; i < paragraphs.length; i++) {
+								paragraphs[i].style.width = width + 'px';
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Not really solved!
+						```js
+						resizeAllParagraphsToMatchBoxWidth(
+							$('#foo-box .foo-paragraph'),
+							$('#foo-box').get(0)
+						);
+						resizeAllParagraphsToMatchBoxWidth(
+							$('#bar-box .bar-paragraph'),
+							$('#bar-box').get(0)
+						);
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import fastdom from 'fastdom';
+
+						function resizeAllParagraphsToMatchBoxWidth(paragraphs, box) {
+
+							fastdom.measure(() => {
+								const width = box.offsetWidth;
+
+								fastdom.mutate(() => {
+									for (let i = 0; i < paragraphs.length; i++) {
+										paragraphs[i].style.width = width + 'px';
+									}
+								});
+							});
+						}
+						```
+					</textarea>
+				</section>
+
+				<section>
+					<h1>Normal Thrashing Situation</h1>
+					<img src="./material/frame-read-write-layout-thrashing.png" />
+				</section>
+
+				<section>
+					<h1>fastdom read and write applied</h1>
+					<img src="./material/frame-read-write-moved.png" />
+				</section>
+
+				<section>
+					<img src="./material/frame-long.png" />
+				</section>
+
+				<section>
+					<img src="./material/events-in-frame.png" />
+				</section>
+
+				<section>
+					<img src="./material/frame-multi-process.png" style="background: #fff;" />
+				</section>
+
+				<section data-markdown>
+						<textarea data-template>
+							# Really???
+							## Spot the error!
+							```js
+							// advice: get cached values from the previous frame
+							// Schedule our function to run at the start of the frame.
+							requestAnimationFrame(logBoxHeight);
+
+							function logBoxHeight() {
+								// Gets the height of the box in pixels and logs it out.
+								console.log(box.offsetHeight);
+							}
+							```
+						</textarea>
+				</section>
+
+				<section>
+					<img src="./material/frame-long.png" />
+				</section>
+
+				<section data-markdown>
+						<textarea data-template>
+							# Really???
+							## Spot the error!
+							```js
+							//let lastScrollY, scheduledAnimationFrame;
+							//const readAndUpdatePage = () => {scheduledAnimationFrame = false;/* ... */};
+							function onScroll (evt) {
+								// Store the scroll value for laterz.
+								lastScrollY = window.scrollY;
+								// Prevent multiple rAF callbacks.
+								if (scheduledAnimationFrame)
+									return;
+
+								scheduledAnimationFrame = true;
+								requestAnimationFrame(readAndUpdatePage);
+							}
+
+							window.addEventListener('scroll', onScroll);
+							```
+						</textarea>
+				</section>
+
+				<section>
+					<h1>Normal Thrashing Situation</h1>
+					<img src="./material/frame-read-write-layout-thrashing.png" />
+				</section>
+
+				<section>
+					<h1>fastdom read and write applied</h1>
+					<img src="./material/frame-read-write-moved.png" />
+				</section>
+
+				<section>
+					<h1>fastdom write only applied</h1>
+					<img src="./material/frame-write-only-moved.png" />
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Separate your Reads from your Writes and the problem is solved
+						```js
+						import fastdom from 'fastdom';
+
+						function resizeAllParagraphsToMatchBoxWidth(paragraphs, box) {
+
+							const width = box.offsetWidth;
+
+							fastdom.mutate(() => {
+								for (let i = 0; i < paragraphs.length; i++) {
+									paragraphs[i].style.width = width + 'px';
+								}
+							});
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						function resizeAllParagraphsToMatchBoxWidth(paragraphs, box) {
+
+							const width = box.offsetWidth;
+
+							requestAnimationFrame(() => {
+								for (var i = 0; i < paragraphs.length; i++) {
+									paragraphs[i].style.width = width + 'px';
+								}
+							});
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# `requestAnimationFrame` <br> was made for Layout changes use it!
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Two simple rules to avoid layout thrashing
+
+						* Put every DOM/CSSOM changing code into a `requestAnimationFrame`.
+						* Never put style/layout reading code into a  `requestAnimationFrame`.
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# But <br> `requestAnimationFrame` <br> was made for animations!
+
+						* Calling rAF inside of a rAF moves to the next frame.
+						* Not executed in a hidden document (Actually a feature).
+						* (Edge/Safari move almost always to the next frame. WTF Bug!!!)
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import { mutationPhase } from 'rawblock/utils/rafqueue';
+
+						function resizeAllParagraphsToMatchBoxWidth(paragraphs, box) {
+							const width = box.offsetWidth;
+
+							mutationPhase(() => {
+								for (let i = 0; i < paragraphs.length; i++) {
+									paragraphs[i].style.width = width + 'px';
+								}
+							});
+						}
+						```
+					</textarea>
+				</section>
+
+
+				<section data-markdown>
+					<textarea data-template>
+						# Ok, but using <br> `requestAnimationFrame` / `mutationPhase` <br> callbacks is no fun
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Bind your function to the mutationPhase
+
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import rafs from 'rawblock/utils/rafs';
+
+						class Paragraphs {
+							constructor(){
+								//works like Function.bind
+								//this.setWidth = rafs(this.setWidth);
+								//works like _.bindAll
+								rafs(this, 'setWidth'/*, 'setHeight' */):
+							}
+
+							resizeAllParagraphsToMatchBoxWidth(paragraphs, box){
+								this.setWidth(paragraphs, box.offsetWidth);
+							}
+
+							setWidth(elements, width){
+								for (let i = 0; i < elements.length; i++) {
+									elements[i].style.width = width + 'px';
+								}
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import {rafDecorator} from 'rawblock/utils/rafs';
+
+						class Paragraphs {
+							resizeAllParagraphsToMatchBoxWidth(paragraphs, box){
+								this.setWidth(paragraphs, box.offsetWidth);
+							}
+
+							@rafDecorator
+							setWidth(elements, width){
+								for (let i = 0; i < elements.length; i++) {
+									elements[i].style.width = width + 'px';
+								}
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Bind your function to the mutationPhase with some options
+
+						```js
+						import rafs from 'rawblock/utils/rafs';
+
+						class Paragraphs {
+							constructor(){
+								//this.setWidth = rafs(this.setWidth, {throttle: true, that: this});
+								rafs(this, {throttle: true, that: this}, 'setWidth'/*, 'setHeight' */):
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import {rafDecorator} from '../utils/rafs';
+
+						class Paragraphs {
+
+							@rafDecorator({throttle: true, that: this})
+							setWidth(elements, width){
+								for (let i = 0; i < elements.length; i++) {
+									elements[i].style.width = width + 'px';
+								}
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import {mutationPhase} from 'rawblock/utils/rafqueue';
+						import $ from 'jquery';
+
+						['addClass', 'appendTo', 'css'/*, ... */].forEach(fn => {
+							$.fn[`${fn}Raf`] = function(){
+								if(this.length){
+									mutationPhase(() => {
+										$.fn[fn].apply(this, arguments);
+									});
+								}
+								return this;
+							};
+						});
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						class Paragraphs {
+
+							resizeAllParagraphsToMatchBoxWidth(paragraphs, box){
+								$(paragraphs).cssRaf({width: box.offsetWidth});
+							}
+
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import { mutationPhase } from 'rawblock/utils/rafqueue';
+
+						class Paragraphs {
+
+							async resizeAllParagraphsToMatchBoxWidth(paragraphs, box){
+								const width = box.offsetWidth;
+
+								await mutationPhase();
+
+								for (let i = 0; i < paragraphs.length; i++) {
+									paragraphs[i].style.width = width + 'px';
+								}
+							}
+
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Patterns / Helper / Problems
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Fixing jQuery
+
+						```js
+						import addDimensions from 'rawblock/rb_$/$_dimensions';
+						import $ from 'jquery';
+
+						addDimensions($);
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Fixing jQuery
+
+						* `jQuery.support.boxSizingReliable()`; // automatic fix
+						* adds non layout thrashing *`Width` and *`Height` setter methods
+
+						```js
+						// still old layout thrashing jQuery method
+						$('.box').outerWidth( 400 );
+						// fixed non thrashing version
+						$('.box').outerWidth( 'async', 400 );
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import { mutationPhase } from 'rawblock/utils/rafqueue';
+
+						export default function safeLateRead(fn){
+							return async function(){
+								await mutationPhase();
+								setTimeout(fn, 0);
+							};
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import throttle from '/utils/throttle';
+						import safeLateRead from '/utils/safe-late-read';
+
+						window.addEventListener('scroll', throttle(safeLateRead(() => {
+							// read in hostile environment without layout thrashing
+						})));
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import throttle from 'rawblock/utils/throttle';
+
+						const readOptimized = throttle(() => {
+							// read in hostile environment without layout thrashing
+						}, {read: true});
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Problem
+						```js
+						class Foo {
+
+							constructor(){
+								this.setSize();
+							}
+
+							getWidth(){
+								//this.$element.css({width: ''});
+								return this.$element.width() + 99;//some computation
+							}
+
+							setSize(){
+								this.$element.cssRaf({
+									width: this.getWidth(),
+								});
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						class Foo {
+							constructor(){
+
+								this.setSize();
+
+								this.$clonedElement = this.$element
+									.clone()
+									//not part of the document so save
+									.css({visibility: 'hidden'})
+									.insertAfterRaf(this.$element)
+								;
+							}
+
+							getWidth(){
+								return (this.$clonedElement || this.$element).width() + 99; // some computation
+							}
+
+							setSize(){
+								this.$element.cssRaf({
+									width: this.getWidth(),
+								});
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Problem
+						```js
+						import rafs from 'rawblock/utils/rafs';
+
+						class Foo {
+							constructor(){
+								rafs(this, {that: this, throttle: true}, 'onmove');
+
+								this.element.addEventListener('mousemove', this.onmove);
+							}
+
+							onmove({clientX}){
+								// clientX is a layout read!
+								this.element.style.transform = `translateX(${clientX + this.xCorrect}px)`;
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import rafs from 'rawblock/utils/rafs';
+
+						class Foo {
+							constructor(){
+								this.element.addEventListener('mousemove', this.onmove);
+							}
+
+							onmove({clientX}){
+								// does not throttle anymore. But that's ok, otherwise see next patterns.
+								this.$element.cssRaf({
+									transform: `translateX(${clientX + this.xCorrect}px)`,
+								});
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import rafs from 'rawblock/utils/rafs';
+
+						class Foo {
+							constructor(){
+								rafs(this, {that: this, throttle: true}, 'onmove');
+
+								this.transformX = 0;
+
+								this.$element.draggy({
+									move:this.onmove,
+								});
+							}
+
+							// relX gives you the change in pixel relative to the previous event.
+							onmove({relX}){
+								// the throttle option will remove some relX events in Edge/Safari
+								this.transformX += relX;
+								this.element.style.transform = `translateX(${ this.transformX }px)`;
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import rafs from 'rawblock/utils/rafs';
+
+						class Foo {
+							constructor(){
+								this.calcTransform = this.calcTransform.bind(this);
+								rafs(this, {throttle: true}, 'setMove');
+
+								this.transformX = 0;
+
+								this.$element.draggy({
+									move: this.calcTransform,
+								});
+							}
+
+							calcTransform({relX, originalEvent}){
+								//const {offsetX, layerX, clientX} = originalEvent;
+								//compute with offsetX/layerX/clientX
+								this.transformX += relX;
+							}
+
+							setMove(){
+								this.element.style.transform = `translateX(${ this.transformX }px)`;
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Throttle read tasks to the frame:
+
+						```js
+						const realRAf = window.requestAnimationFrame;
+						const emptyFn = () => {};
+						let isReadStarted = false;
+						let readTasks = [];
+
+						function executeReads(){
+							const reads = readTasks;
+
+							readTasks = [];
+							isReadStarted = false;
+
+							while(reads.length){
+								reads.shift()();
+							}
+						}
+
+						export default function requestReadFrame(fn){
+							readTasks.push(fn);
+
+							if(!isReadStarted){
+								isReadStarted = true;
+								realRAf(executeReads);
+							}
+						}
+
+						const writeRaf = function requestAnimationFrame(){
+							if(!isReadStarted){
+								requestReadFrame(emptyFn);
+							}
+
+							return realRAf.apply(this, arguments);
+						};
+
+						window.requestAnimationFrame = writeRaf;
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Throttle read tasks to the frame:
+
+						```js
+						// has to be imported (as first module in app so it overrides rAF for all third party scripts)
+						import requestReadFrame from 'utils/request-read-frame';
+
+						window.requestAnimationFrame(() => {
+							// executed always after requestReadFrame callbacks but in the same rAF
+						});
+
+						requestReadFrame(() => {
+							// executed before every requestAnimationFrame callbacks but in the same rAF
+							// caution: a rAF started inside here is scheduled to the next frame not the same one...
+						});
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						# Problem: Multi-Line Ellipsis
+
+						```css
+						.truncated-text {
+							width: 100%;
+							height: 5em;
+							overflow: hidden;
+							contain: strict;
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import {thrashingMeasurePhase, improperMutationPhase} from 'rawblock/utils/evil_read_write_queue';
+
+						class Foo(){
+							truncateUntil(){
+								await thrashingMeasurePhase();
+								const height = this.element.offsetHeight;
+								const scrollHeight = this.element.scrollHeight;
+
+								if(height + 1 >= scrollHeight){
+									return;
+								}
+
+								await improperMutationPhase();
+
+								const text = this.element.innerHTML;
+								this.element.innerHTML = this.truncate(text, Math.min((height / scrollHeight) + 0.05, 99));
+
+								this.truncateUntil();
+							}
+
+							truncate(text, truncateQuotient){
+								//return computation...
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+				<section data-markdown>
+					<textarea data-template>
+						```js
+						import {thrashingMeasurePhase, improperMutationPhase} from 'rawblock/utils/evil_read_write_queue';
+
+						class Foo(){
+							truncateUntil(){
+								await thrashingMeasurePhase();
+								const height = this.element.offsetHeight;
+								const scrollHeight = this.element.scrollHeight;
+
+								if(height + 1 >= scrollHeight){
+									return;
+								}
+
+								//fun fact: did you know that getting this.innerText is a layout read operation?
+								const text = this.element.innerText;
+
+								await improperMutationPhase();
+
+								this.element.innerText = this.truncate(text, Math.min((height / scrollHeight) + 0.05, 99));
+
+								this.truncateUntil();
+							}
+
+							truncate(text, truncateQuotient){
+								//return computation...
+							}
+						}
+						```
+					</textarea>
+				</section>
+
+
+			</section>
+
+			<section data-markdown>
+					# Questions and Thoughts?
+
+					* Put every DOM/CSSOM changing code into a `requestAnimationFrame`.
+					* Never put style/layout reading code into a  `requestAnimationFrame`.
+					* Use helpers/ best practice patterns to write maintainable async code.
+					* Try to follow these rules but use your brain in the first place.
+
+			</section>
+
+			<section data-markdown>
+				# Thank you!!!
+			</section>
+
+				<!--<section>-->
+					<!--<img src="./material/layout-read-list.png" />-->
+				<!--</section>-->
+
+				<!--<section data-markdown>-->
+					<!--<textarea data-template>-->
+					<!--## All layout reads/Layout measurement code can thrash layout-->
+					<!--</textarea>-->
+				<!--</section>-->
+
+				<!--<section data-markdown>-->
+					<!--<textarea data-template>-->
+					<!--## The following code do not read layout-->
+
+					<!--* `elem.matches('.selector')`-->
+					<!--* `elem.classList.has('selector')`-->
+					<!--* `elem.style.width`-->
+					<!--</textarea>-->
+				<!--</section>-->
+
+				<!--<section>-->
+					<!--<img src="./material/small-print.png" />-->
+				<!--</section>-->
+
+				<!--<section>-->
+					<!--<img src="./material/frame.jpg" />-->
+				<!--</section>-->
+
+
+
+			</div>
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+            // More info about config & dependencies:
+            // - https://github.com/hakimel/reveal.js#configuration
+            // - https://github.com/hakimel/reveal.js#dependencies
+            Reveal.initialize({
+                width: "1340",
+                height: "100%",
+                controls: false,
+                progress: false,
+                history: true,
+
+                transition: 'none',
+                dependencies: [
+                    { src: 'plugin/markdown/marked.js' },
+                    { src: 'plugin/markdown/markdown.js' },
+                    { src: 'plugin/notes/notes.js', async: true },
+                    { src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } }
+                ]
+            });
+		</script>
+	</body>
+</html>

@@ -1,2 +1,3 @@
-# layout-thrashing
-Slides for the Talk "Avoid Layout Thrashing - The easy way."
+# [Avoid Style and Layout Thrashing - The easy way](https://afarkas.github.io/layout-thrashing/)
+
+

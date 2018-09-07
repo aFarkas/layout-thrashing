@@ -1,0 +1,159 @@
+/**
+ * Black theme for reveal.js. This is the opposite of the 'white' theme.
+ *
+ * By Hakim El Hattab, http://hakim.se
+ */
+
+
+// Default mixins and settings -----------------
+@import "../template/mixins";
+@import "../template/settings";
+// ---------------------------------------------
+
+
+// Include theme-specific fonts
+@import url(../../lib/font/latolatin/latolatin.css);
+
+
+// Override theme settings (see ../template/settings.scss)
+$backgroundColor: #222429;
+$presentationColor: hsla(70, 70%, 70%, 1);
+$mainColor: #fff;
+$headingColor: $presentationColor;
+
+$mainFontSize: 42px;
+$mainFont: 'LatoLatinBlack', 'LatoLatin', Helvetica, sans-serif;
+$headingFont: 'LatoLatinBlack', 'LatoLatin', Helvetica, sans-serif;
+$headingTextShadow: none;
+$headingLetterSpacing: normal;
+$headingTextTransform: normal;
+$headingFontWeight: 600;
+$linkColor: #42affa;
+$linkColorHover: lighten( $linkColor, 15% );
+$selectionBackgroundColor: lighten( $linkColor, 25% );
+
+$heading1Size: 5rem;
+$heading2Size: 1.6em;
+$heading3Size: 1.3em;
+$heading4Size: 1.0em;
+
+section.has-light-background {
+	&, h1, h2, h3, h4, h5, h6 {
+		color: #222;
+	}
+}
+
+// Custom Elements ------------------------------
+
+.reveal {
+	
+	h1 {
+		margin-bottom: 40px;
+		text-transform: uppercase;
+		
+		code {
+			color: #eee;
+			font-style: italic;
+		}
+	}
+	
+	
+	
+	p {
+		font-size: 4rem;
+		
+		small {
+			font-size: 1.5rem;
+		}
+	}
+	
+	ol,
+	ul {
+		margin: 0;
+		padding: 0 0 0 70px;
+		color: 	$presentationColor;
+		
+	}
+	
+	li {
+		font-size: 3rem;
+		
+		code {
+			color: #eee;
+			font-style: italic;
+		}
+	}
+	
+	.items {
+		
+		li {
+			opacity: 0.4;
+			
+			&.highlight-item {
+				opacity: 1;
+			}
+		}
+	}
+	
+	.intro  {
+		padding: 10% 0 0;
+	}
+	
+	.branding {
+		position: relative;
+		padding: 8% 0 0;
+		display: flex;
+		//justify-content: center;
+		align-items: center;
+		list-style: none;
+		margin: 0;
+	}
+	
+	.custom-img {
+		background: transparent;
+		box-shadow: none;
+		border: none;
+		margin: 0;
+	}
+	
+	.branding-item {
+		padding: 30px;
+		
+		&.is-boffinhouse {
+			width: 100px;
+			margin: 0 0 0 auto;
+		}
+		
+		&.is-unic {
+			width: 140px;
+		}
+	}
+	
+	.hide-txt {
+		display: none;
+	}
+	
+	blockquote {
+		background: none!important;
+		box-shadow: none!important;
+		
+		p {
+			font-size: 3.6rem;
+			color: 	$presentationColor;
+			text-transform: uppercase;
+		}
+	}
+	
+	pre {
+		box-shadow: none!important;
+	}
+	
+	.hljs {
+		background: none;
+	}
+}
+
+// Theme template ------------------------------
+@import "../template/theme";
+// ---------------------------------------------
+
