@@ -899,7 +899,7 @@
 								await improperMutationPhase();
 
 								const text = this.element.innerHTML;
-								this.element.innerHTML = this.truncate(text, 1 - Math.min((height / scrollHeight) + 0.1, 0.9));
+								this.element.innerHTML = this.truncate(text, 1 - Math.min((height / scrollHeight) + 0.1, 0.95));
 
 								this.truncateUntil();
 							}
@@ -932,7 +932,7 @@
 
 								await improperMutationPhase();
 
-								this.element.innerText = this.truncate(text, 1 - Math.min((height / scrollHeight) + 0.1, 0.9));
+								this.element.innerText = this.truncate(text, 1 - Math.min((height / scrollHeight) + 0.1, 0.95));
 
 								this.truncateUntil();
 							}
